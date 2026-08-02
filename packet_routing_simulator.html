@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Packet Routing Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0e14;
+    --panel:#121a24;
+    --panel-2:#161f2b;
+    --line:#242f3d;
+    --edge:#3a4757;
+    --text:#e7edf3;
+    --muted:#7c8a9a;
+    --amber:#ffb454;
+    --blue:#5b9dff;
+    --coral:#ff6b6b;
+    --green:#3ddc97;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  body{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+
+  header{
+    padding:14px 20px;border-bottom:1px solid var(--line);
+    display:flex;align-items:baseline;gap:12px;flex-shrink:0;
+  }
+  header h1{font-size:15px;font-weight:700;letter-spacing:.02em;margin:0;}
+  header .tag{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.05em;}
+
+  .app{flex:1;display:flex;min-height:0;}
+
+  .panel{
+    width:270px;flex-shrink:0;background:var(--panel);
+    border-right:1px solid var(--line);padding:16px;overflow-y:auto;
+  }
+  .panel.right{border-right:none;border-left:1px solid var(--line);}
+
+  .section{margin-bottom:22px;}
+  .section h2{
+    font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);
+    margin:0 0 10px;font-weight:600;
+  }
+
+  label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-family:var(--mono);}
+  input[type=number],input[type=text]{
+    width:100%;background:var(--panel-2);border:1px solid var(--edge);color:var(--text);
+    padding:7px 8px;border-radius:5px;font-family:var(--mono);font-size:13px;margin-bottom:10px;
+  }
+  input:focus{outline:2px solid var(--blue);outline-offset:1px;}
+
+  .row{display:flex;gap:8px;}
+  .row > *{flex:1;}
+
+  button{
+    width:100%;background:var(--panel-2);border:1px solid var(--edge);color:var(--text);
+    padding:9px 10px;border-radius:5px;font-family:var(--sans);font-weight:600;font-size:12.5px;
+    cursor:pointer;transition:background .12s, border-color .12s;
+  }
+  button:hover{background:#1b2531;border-color:#4a5b6f;}
+  button:active{transform:translateY(1px);}
+  button.primary{background:var(--amber);color:#1a1200;border-color:var(--amber);}
+  button.primary:hover{background:#ffc272;}
+  button.ghost{background:transparent;}
+  button.danger{border-color:#5a2b2b;}
+  button.danger:hover{background:#241414;}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+  button:focus-visible{outline:2px solid var(--blue);outline-offset:2px;}
+
+  .mode-btn.active{border-color:var(--amber);color:var(--amber);}
+
+  .hint{font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px;}
+  .hint b{color:var(--text);}
+
+  canvas{display:block;background:
+    radial-gradient(circle at 50% 45%, #0e141d 0%, #0a0e14 70%);
+  }
+  .stage{flex:1;position:relative;min-width:0;}
+  .status-bar{
+    position:absolute;top:14px;left:14px;right:14px;
+    display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;
+    font-family:var(--mono);font-size:12px;
+  }
+  .status-bar .left{color:var(--muted);line-height:1.6;}
+  .status-bar .left b{color:var(--text);}
+  .cost-pill{
+    background:var(--panel);border:1px solid var(--edge);border-radius:20px;
+    padding:6px 14px;color:var(--amber);font-weight:600;display:none;
+  }
+  .cost-pill.show{display:block;}
+
+  .log{
+    font-family:var(--mono);font-size:12px;line-height:1.7;
+    background:var(--panel-2);border:1px solid var(--line);border-radius:6px;
+    padding:10px;height:100%;overflow-y:auto;white-space:pre-wrap;word-break:break-word;
+  }
+  .log .l-info{color:var(--muted);}
+  .log .l-ok{color:var(--green);}
+  .log .l-warn{color:var(--amber);}
+  .log .l-err{color:var(--coral);}
+  .log-wrap{display:flex;flex-direction:column;height:calc(100% - 30px);}
+
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--edge);border-radius:4px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>PACKET ROUTING SIMULATOR</h1>
+  <span class="tag">graph · dijkstra · min-heap</span>
+</header>
+
+<div class="app">
+
+  <!-- LEFT CONTROL PANEL -->
+  <div class="panel">
+    <div class="section">
+      <h2>Add Router</h2>
+      <label for="routerId">Router ID</label>
+      <input type="number" id="routerId" placeholder="e.g. 4">
+      <button id="addRouterBtn" class="primary">Add router</button>
+    </div>
+
+    <div class="section">
+      <h2>Add Link</h2>
+      <div class="row">
+        <div>
+          <label for="linkA">Router A</label>
+          <input type="number" id="linkA">
+        </div>
+        <div>
+          <label for="linkB">Router B</label>
+          <input type="number" id="linkB">
+        </div>
+      </div>
+      <label for="linkCost">Cost</label>
+      <input type="number" id="linkCost" placeholder="e.g. 5">
+      <button id="addLinkBtn">Add link</button>
+    </div>
+
+    <div class="section">
+      <h2>Modes</h2>
+      <button id="modeRoute" class="mode-btn active">Route packet (click 2 routers)</button>
+      <br><br>
+      <button id="modeBreak" class="mode-btn danger">Break link (click a line)</button>
+    </div>
+
+    <div class="section">
+      <h2>Reset</h2>
+      <button id="clearBtn" class="ghost">Clear selection</button>
+    </div>
+
+    <div class="hint">
+      <b>How it works:</b><br>
+      Route mode: click a source router, then a destination — Dijkstra runs and the packet animates hop by hop.<br><br>
+      Break mode: click directly on a link line to sever it.
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="stage">
+    <div class="status-bar">
+      <div class="left" id="modeLabel">Mode: <b>Route packet</b> — click a source router</div>
+      <div class="cost-pill" id="costPill"></div>
+    </div>
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <!-- RIGHT LOG PANEL -->
+  <div class="panel right">
+    <div class="section" style="height:100%;">
+      <h2>Terminal</h2>
+      <div class="log-wrap">
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============= GRAPH + DIJKSTRA (mirrors NetworkGraph from the C++ version) =============
+class NetworkGraph {
+  constructor(){ this.adj = new Map(); this.routers = new Set(); }
+  routerExists(id){ return this.routers.has(id); }
+  addRouter(id){
+    if(this.routerExists(id)){ log(`Router ${id} already exists.`, 'warn'); return false; }
+    this.routers.add(id); this.adj.set(id, []);
+    log(`Router ${id} added.`, 'ok');
+    return true;
+  }
+  addLink(u,v,cost){
+    if(!this.routerExists(u) || !this.routerExists(v)){ log('Both routers must exist first!', 'err'); return false; }
+    if(u===v){ log('A router cannot link to itself.', 'err'); return false; }
+    this.adj.get(u).push([v,cost]);
+    this.adj.get(v).push([u,cost]);
+    log(`Link added: ${u} <-> ${v} (cost ${cost})`, 'ok');
+    return true;
+  }
+  removeLink(u,v){
+    const rm=(a,b)=>{ this.adj.set(a, this.adj.get(a).filter(p=>p[0]!==b)); };
+    rm(u,v); rm(v,u);
+    log(`Link BROKEN between ${u} and ${v}`, 'warn');
+  }
+  getRouterIds(){ return [...this.routers]; }
+  getEdgesOnce(){
+    const edges=[];
+    for(const [u,list] of this.adj) for(const [v,w] of list) if(u<v) edges.push([u,v,w]);
+    return edges;
+  }
+  dijkstra(src,dest){
+    const dist=new Map(), parent=new Map();
+    for(const r of this.routers) dist.set(r, Infinity);
+    dist.set(src,0); parent.set(src,-1);
+    const pq=[[0,src]]; // simple array-based min-heap substitute (binary heap)
+    const push=(item)=>{ pq.push(item); pq.sort((a,b)=>a[0]-b[0]); };
+    const pop=()=> pq.shift();
+    while(pq.length){
+      const [d,u]=pop();
+      if(d>dist.get(u)) continue;
+      for(const [v,w] of this.adj.get(u)||[]){
+        if(dist.get(u)+w < dist.get(v)){
+          dist.set(v, dist.get(u)+w);
+          parent.set(v,u);
+          push([dist.get(v), v]);
+        }
+      }
+    }
+    if(!dist.has(dest) || dist.get(dest)===Infinity) return {path:[], cost:-1};
+    const path=[];
+    for(let at=dest; at!==-1; at=parent.get(at)) path.push(at);
+    path.reverse();
+    return {path, cost:dist.get(dest)};
+  }
+}
+
+const network = new NetworkGraph();
+
+// ============= LOGGING (terminal-style panel) =============
+const logEl = document.getElementById('log');
+function log(msg, kind='info'){
+  const line = document.createElement('div');
+  line.className = 'l-'+kind;
+  line.textContent = (kind==='ok'?'> ':kind==='err'?'! ':kind==='warn'?'~ ':'  ') + msg;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+log('Welcome to the Packet Routing Simulator.', 'info');
+log('Add a few routers to get started.', 'info');
+
+// ============= CANVAS SETUP =============
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const stage = document.querySelector('.stage');
+function resize(){
+  canvas.width = stage.clientWidth;
+  canvas.height = stage.clientHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+const NODE_R = 24;
+const positions = new Map(); // id -> {x,y}
+
+function layout(){
+  const ids = network.getRouterIds();
+  const cx = canvas.width/2, cy = canvas.height/2;
+  const radius = Math.min(cx,cy) - 70;
+  ids.forEach((id,i)=>{
+    const angle = -Math.PI/2 + (2*Math.PI*i/ids.length);
+    positions.set(id, { x: cx + radius*Math.cos(angle), y: cy + radius*Math.sin(angle) });
+  });
+}
+
+// ============= INTERACTION STATE =============
+let mode = 'route'; // 'route' | 'break'
+let src = null, dest = null;
+let path = [], pathCost = -1;
+let animating = false, animStart = 0;
+const HOP_MS = 600;
+
+const modeLabel = document.getElementById('modeLabel');
+const costPill = document.getElementById('costPill');
+
+function setMode(m){
+  mode = m;
+  document.getElementById('modeRoute').classList.toggle('active', m==='route');
+  document.getElementById('modeBreak').classList.toggle('active', m==='break');
+  clearSelection(false);
+  updateStatus();
+}
+function updateStatus(){
+  if(mode==='route'){
+    if(src===null) modeLabel.innerHTML = 'Mode: <b>Route packet</b> — click a source router';
+    else if(dest===null) modeLabel.innerHTML = `Mode: <b>Route packet</b> — source R${src} selected, click destination`;
+    else modeLabel.innerHTML = `Mode: <b>Route packet</b> — R${src} &rarr; R${dest}`;
+  } else {
+    modeLabel.innerHTML = 'Mode: <b>Break link</b> — click a line to sever it';
+  }
+  if(pathCost>=0 && path.length){
+    costPill.textContent = `Path cost: ${pathCost}`;
+    costPill.classList.add('show');
+  } else {
+    costPill.classList.remove('show');
+  }
+}
+function clearSelection(doLog=true){
+  src=null; dest=null; path=[]; pathCost=-1; animating=false;
+  updateStatus();
+  if(doLog) log('Selection cleared.', 'info');
+}
+
+function findClickedRouter(mx,my){
+  for(const id of network.getRouterIds()){
+    const p = positions.get(id);
+    const dx=mx-p.x, dy=my-p.y;
+    if(dx*dx+dy*dy <= NODE_R*NODE_R) return id;
+  }
+  return null;
+}
+function pointToSegDist(px,py, ax,ay, bx,by){
+  const abx=bx-ax, aby=by-ay;
+  const apx=px-ax, apy=py-ay;
+  const len2 = abx*abx+aby*aby;
+  let t = len2===0 ? 0 : (apx*abx+apy*aby)/len2;
+  t = Math.max(0, Math.min(1,t));
+  const cx=ax+abx*t, cy=ay+aby*t;
+  return Math.hypot(px-cx, py-cy);
+}
+function findClickedEdge(mx,my){
+  for(const [u,v,w] of network.getEdgesOnce()){
+    const a=positions.get(u), b=positions.get(v);
+    if(pointToSegDist(mx,my,a.x,a.y,b.x,b.y) <= 7) return [u,v];
+  }
+  return null;
+}
+
+canvas.addEventListener('click', (e)=>{
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX-rect.left, my = e.clientY-rect.top;
+
+  if(mode==='route'){
+    const clicked = findClickedRouter(mx,my);
+    if(clicked===null) return;
+    if(src===null){
+      src = clicked; dest=null; path=[]; pathCost=-1; animating=false;
+      log(`Source set to R${src}.`, 'info');
+    } else if(dest===null){
+      dest = clicked;
+      const r = network.dijkstra(src,dest);
+      path = r.path; pathCost = r.cost;
+      if(path.length===0){
+        log(`No route between R${src} and R${dest}! Packet DROPPED.`, 'err');
+      } else {
+        log(`Shortest path (cost ${pathCost}): ${path.map(p=>'R'+p).join(' -> ')}`, 'ok');
+        animating = true; animStart = performance.now();
+      }
+    } else {
+      // start a new selection
+      src = clicked; dest=null; path=[]; pathCost=-1; animating=false;
+      log(`Source set to R${src}.`, 'info');
+    }
+    updateStatus();
+  } else {
+    // break mode
+    const edge = findClickedEdge(mx,my);
+    if(edge){
+      network.removeLink(edge[0], edge[1]);
+      path=[]; pathCost=-1; animating=false;
+      updateStatus();
+    }
+  }
+});
+
+document.addEventListener('keydown', (e)=>{
+  if(e.key.toLowerCase()==='c') clearSelection();
+});
+
+// ============= UI WIRING =============
+document.getElementById('addRouterBtn').addEventListener('click', ()=>{
+  const el = document.getElementById('routerId');
+  const id = parseInt(el.value,10);
+  if(Number.isNaN(id)){ log('Enter a valid router ID.', 'err'); return; }
+  if(network.addRouter(id)){ layout(); el.value=''; }
+});
+document.getElementById('addLinkBtn').addEventListener('click', ()=>{
+  const a = parseInt(document.getElementById('linkA').value,10);
+  const b = parseInt(document.getElementById('linkB').value,10);
+  const c = parseInt(document.getElementById('linkCost').value,10);
+  if([a,b,c].some(Number.isNaN)){ log('Fill in router A, B and a cost.', 'err'); return; }
+  network.addLink(a,b,c);
+});
+document.getElementById('modeRoute').addEventListener('click', ()=>setMode('route'));
+document.getElementById('modeBreak').addEventListener('click', ()=>setMode('break'));
+document.getElementById('clearBtn').addEventListener('click', ()=>clearSelection());
+
+// ============= RENDER LOOP =============
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const ids = network.getRouterIds();
+
+  // edges
+  ctx.lineWidth = 2;
+  for(const [u,v,w] of network.getEdgesOnce()){
+    const a = positions.get(u), b = positions.get(v);
+    ctx.strokeStyle = '#3a4757';
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+    const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+    ctx.fillStyle = '#c8c83c';
+    ctx.font = '12px IBM Plex Mono, monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(w, mx, my-8);
+  }
+
+  // highlighted path (under packet)
+  if(path.length>1){
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#ffb454';
+    ctx.beginPath();
+    for(let i=0;i<path.length-1;i++){
+      const a=positions.get(path[i]), b=positions.get(path[i+1]);
+      ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y);
+    }
+    ctx.stroke();
+  }
+
+  // animated packet with fading trail
+  if(animating && path.length>=2){
+    const elapsed = (performance.now()-animStart)/1000;
+    const hopDur = HOP_MS/1000;
+    const totalHops = path.length-1;
+    const hop = Math.floor(elapsed/hopDur);
+    if(hop >= totalHops){
+      animating = false;
+    } else {
+      const t = (elapsed % hopDur)/hopDur;
+      const a = positions.get(path[hop]), b = positions.get(path[hop+1]);
+      const px = a.x + (b.x-a.x)*t, py = a.y + (b.y-a.y)*t;
+
+      // trail
+      for(let k=1;k<=5;k++){
+        const tt = Math.max(0, t - k*0.05);
+        const tx = a.x + (b.x-a.x)*tt, ty = a.y + (b.y-a.y)*tt;
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(255,180,84,${0.25 - k*0.04})`;
+        ctx.arc(tx,ty, 8-k*0.8, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.fillStyle = '#ffb454';
+      ctx.shadowColor = '#ffb454';
+      ctx.shadowBlur = 14;
+      ctx.arc(px,py,8,0,Math.PI*2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  // routers
+  for(const id of ids){
+    const p = positions.get(id);
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,NODE_R,0,Math.PI*2);
+    if(id===src) ctx.fillStyle = '#5b9dff';
+    else if(id===dest) ctx.fillStyle = '#ff6b6b';
+    else ctx.fillStyle = '#1a2330';
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#e7edf3';
+    ctx.stroke();
+
+    ctx.fillStyle = '#e7edf3';
+    ctx.font = '600 13px Inter, sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('R'+id, p.x, p.y);
+  }
+
+  requestAnimationFrame(draw);
+}
+layout();
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>
