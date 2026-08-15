@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynamic Packet Routing Simulator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Dynamic Packet Routing Simulator</h1>
+      <p>Graph + Dijkstra + Min-Heap + Dynamic Re-Routing</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="network-panel">
+      <div class="toolbar">
+        <div class="toolbar-group">
+          <label>Network
+  <select id="networkSelect">
+    <option value="balanced">Network 1</option>
+    <option value="dense">Network 2</option>
+    <option value="long">Network 3</option>
+    <option value="redundant">Network 4</option>
+  </select>
+</label>
+        </div>
+        <div class="toolbar-group">
+          <label>Source <select id="sourceSelect"></select></label>
+          <label>Destination <select id="destSelect"></select></label>
+          <button id="routeBtn" class="primary">Find Route</button>
+          <button id="sendBtn" disabled>Send Packet</button>
+        </div>
+      </div>
+
+      <div class="canvas-wrap">
+        <canvas id="networkCanvas"></canvas>
+        <div id="canvasHint">Load the demo network, then choose source and destination.</div>
+      </div>
+    </section>
+
+    <aside class="side-panel">
+      <section class="card">
+        <h2>Algorithm</h2>
+        <div class="algorithm-name">Dijkstra's Shortest Path</div>
+        <p class="muted">
+          The network is a weighted graph. Routers are vertices, links are weighted edges,
+          and the minimum-cost route is found using a min-heap priority queue.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>Calculation / Decision Log</h2>
+        <div id="log" class="log"></div>
+      </section>
+
+      <section class="card">
+        <h2>Selected Route</h2>
+        <div id="routeResult" class="route-result">No route calculated.</div>
+      </section>
+
+      <section class="card">
+        <h2>Controls</h2>
+        <div class="control-grid">
+          <button id="breakModeBtn">Break a Link</button>
+          <button id="restoreBtn">Restore Links</button>
+        </div>
+        <p class="muted small">
+          Break a link and run the route again. The simulator recalculates the graph and
+          demonstrates dynamic re-routing.
+        </p>
+      </section>
+    </aside>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
